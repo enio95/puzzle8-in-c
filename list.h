@@ -1,13 +1,16 @@
 #ifndef LIST
 #define LIST
 
-#include "objeto.h"
+#ifndef ERROR
+#include "errorMessage.c"
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 
 typedef struct lnode
 {
-  struct obj *objeto;
+  int value;
 
   struct lnode *prev, *next;
   
@@ -24,29 +27,29 @@ typedef struct
 
 list *newList();
 
-lnode *newNode(obj *);
+lnode *newNode(int);
 
-void insertFirst(list *, obj *);
-void push(list *, obj *);
+void insertFirst(list *, int);
+void push(list *, int);
 
-void insertLast(list *, obj *);
-void enqueue(list *, obj *);
+void insertLast(list *, int);
+void enqueue(list *, int);
 
-obj *removeFirst(list *);
-obj *pop(list *);
-obj *dequeue(list *);
+int removeFirst(list *);
+int pop(list *);
+int dequeue(list *);
 
-obj *removeLast(list *);
+int removeLast(list *);
+
+void removeValue(list *, int);
 
 int listSize(list *);
 int isEmpty(list *);
 
-obj *getFirst(list *);
-obj *top(list *);
+int getFirst(list *);
+int top(list *);
+int searchList(list *, int);
 
-obj *getLast(list *);
-
-void errorMessageIllegalSize(char *);
-void errorMessageListSize(char *);
+int getLast(list *);
 
 #endif

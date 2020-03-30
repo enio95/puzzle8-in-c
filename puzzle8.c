@@ -1,74 +1,95 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "list.c"
-#include "objeto.c"
 #include "heap.c"
-
-obj *start, *goal;
+#include "list.c"
+#include "hashTable.c"
 
 #define MAXSIZE 362880 // 9!
-int size;
 
-/*---------------------------Read---------------------------------*/
+/*----------------------Memory structure-------------------------*/
+typedef struct mem
+{
+  char *pattern;
+
+  int g;
+
+  struct mem *father;
+  
+}mem;
+
+/*----------------------Global variables---------------------------*/
+char *start, *goal;
+int memIndex;
+
+/*---------------------------Read----------------------------------*/
 void readInput();
 void readArray(char *);
 
-/*-----------------------Initiate Memory---------------------------*/
-char **initiateMemory();
-obj *initiateMemory1();
+/*---------------------------Print---------------------------------*/
+void printArray(char *);
+void printPath(mem *, mem *);
 
-/*-----------------------new Combination-------------------------*/
+/*-----------------------Initiate Memory---------------------------*/
+mem *initiateMemory(hash *);
+
+/*-----------------------new Combination---------------------------*/
 char * newComb(char *, int, char);
-void movePoint(int *, int *, char);
-int validPoint(int, int);
+
 char *copy(char *);
 void swapPoint(char *, int, int);
+
+void movePoint(int *, int *, char);
+int validPoint(int, int);
+
 void rotateDir(char *);
 
-/*---------------------------Search-----------------------------*/
-int findBlank(char *);
-int search(char **, char *);
-int search1(obj *, char *);
-int equalArray(char *, char *);
-
-/*--------------------------Print------------------------------*/
-void printPath(obj *);
-
 /*-----------------------------BFS---------------------------------*/
-obj *bfs();
+mem *bfs(mem *, hash *);
 
 /*-----------------------------DFS---------------------------------*/
-obj *dfs();
+mem *dfs(mem *, hash *);
 
-/*---------------------------Best First----------------------------*/
-obj *bestFirst();
+/*--------------------------BestFirst------------------------------*/
+mem *bestFirst(mem *, hash *);
 int dif(char *, char *);
 
-/*----------------------------aStar-------------------------------*/
-obj *aStar();
+/*-----------------------------A*------------------------------*/
+mem *aStar(mem *, hash *);
+
+/*--------------------------Find/Equal-----------------------------*/
+int findBlank(char *);
+int equalPattern(char *, char *);
+
+
 
 int main()
 {
-  //printPath(bfs());
-  //printPath(dfs());
-  //printPath(bestFirst());
-  //printPath(aStar());
+  readInput();
+  printArray(start); printArray(goal);
+
+  hash *t = newHash();
+  
+  mem *memory = initiateMemory(t);
+
+  //printPath(memory, bfs(memory, t));
+  //printPath(memory, dfs(memory, t));
+  //printPath(memory, bestFirst(memory, t));
+  printPath(memory, aStar(memory, t));
   
   return 0;
 }
+
 /*---------------------------Read---------------------------------*/
 void readInput()
 {
-  char *arr = (char *)malloc(9*sizeof(char));
-  char *vec = (char *)malloc(9*sizeof(char));
-
-  readArray(arr);
-  readArray(vec);
-
-  start = newObject(arr, NULL); goal = newObject(vec, NULL);
-
+  goal = (char *)malloc(9*sizeof(char));
+  start = (char *)malloc(9*sizeof(char));
+  
   if ( start==NULL || goal==NULL )
     errorMessageMem("readInput");
+  
+  readArray(start);
+  readArray(goal);
 }
 
 void readArray(char *arr)
@@ -80,32 +101,45 @@ void readArray(char *arr)
     }  
 }
 
-/*-----------------------Initiate Memory---------------------------*/
-char **initiateMemory()
+/*--------------------------Print------------------------------*/
+void printArray(char *arr)
 {
-  char **memory = (char **)malloc(MAXSIZE * sizeof(char *));
+  for( int i=0; i<3; putchar('\n'), i++ )
+    for( int j=0; j<3; printf("%c ", arr[i*3 + j]), j++ );
 
-  if ( memory==NULL )
-    errorMessageMem("initiateMemory");
-
-  memory[0] = start->pattern;
-  size = 1;
-
-  return memory;
+  putchar('\n');
 }
 
-obj *initiateMemory1()
+void printPath(mem *memory, mem *value)
 {
-  obj *memory = (obj *)malloc(MAXSIZE * sizeof(obj));
+  list *s = newList();
 
-  if ( memory==NULL )
-    errorMessageMem("initiateMemory1");
+  for( mem *cur = value; cur!=NULL; cur = cur->father )
+    push(s, (int)(cur - memory) );
+  
+  int i=0;
+  
+  while ( !isEmpty(s) )
+    {
+      printf("Passo %d:\n", i++);
+      printArray(memory[pop(s)].pattern);
+    }
+}
 
-  memory[0].pattern = start->pattern;
+/*-----------------------Initiate Memory---------------------------*/
+mem *initiateMemory(hash *t)
+{
+  mem *memory = (mem *)malloc(MAXSIZE * sizeof(mem));
+
+  if ( memory == NULL )
+    errorMessageMem("initiateMemory");
+
+  memory[0].pattern = start;
   memory[0].father = NULL;
   memory[0].g = 0;
+  memIndex = 1;
   
-  size = 1;
+  insertHash(t, atoi(start));
 
   return memory;
 }
@@ -125,6 +159,26 @@ char *newComb(char *arr, int ref, char dir)
   swapPoint(vec, ref, l*3+c);
 
   return vec;
+}
+
+char *copy(char *arr)
+{
+  char *vec = (char *)malloc(9*sizeof(char));
+
+  if ( vec==NULL )
+    errorMessageMem("copy");
+  
+  for( int i=0; i<9; vec[i]=arr[i], i++ );
+
+  return vec;
+}
+
+void swapPoint(char *arr, int p1, int p2)
+{
+  char temp = arr[p1];
+
+  arr[p1] = arr[p2];
+  arr[p2] = temp;
 }
 
 void movePoint(int *l, int *c, char dir)
@@ -154,26 +208,6 @@ int validPoint(int l, int c)
   return c<0 || l<0 || c>=3 || l>=3 ? 0: 1;
 }
 
-char *copy(char *arr)
-{
-  char *vec = (char *)malloc(9*sizeof(char));
-
-  if ( vec==NULL )
-    errorMessageMem("copy");
-  
-  for( int i=0; i<9; vec[i]=arr[i], i++ );
-
-  return vec;
-}
-
-void swapPoint(char *arr, int p1, int p2)
-{
-  char temp = arr[p1];
-
-  arr[p1] = arr[p2];
-  arr[p2] = temp;
-}
-
 void rotateDir(char *dir)
 {
   switch( *dir )
@@ -196,180 +230,140 @@ void rotateDir(char *dir)
     }
 }
 
-/*------------------------------Search-----------------------------*/
-int findBlank(char *arr)
+/*-----------------------------BFS---------------------------------*/
+mem *bfs(mem *memory, hash *t)
 {
-  int i;
-  
-  for( i=0; i<9 && arr[i]!='0'; i++ );
-
-  return i;
-}
-
-int search(char **memory, char *arr)
-{
-  for( int i=0; i<size; i++ )
-    if ( equalArray(memory[i], arr) )
-      return 1;
-
-  return 0;
-}
-
-int search1(obj *memory, char *arr)
-{
-  int i;
-  
-  for( i=0; i<size && !equalArray(memory[i].pattern, arr); i++);
-
-  return i!=size ?1: 0;
-}
-
-int equalArray(char *arr, char *vec)
-{
-  for( int i=0; i<9; i++ )
-    if ( arr[i]!=vec[i] )
-      return 0;
-
-  return 1;
-}
-
-/*--------------------------Print------------------------------*/
-void printPath(obj *n)
-{
-  list *s = newList();
-
-  for ( obj *cur = n; cur!=NULL; cur = cur->father )
-    push(s, cur);
-
-  printList(s);
-}
-
-/*-----------------------------DFS---------------------------------*/
-obj *bfs()
-{
-  readInput();
-  printObject(start); printObject(goal);
-
-  char **memory = initiateMemory();
-  
   list *l = newList();
-  enqueue(l, start);
+  enqueue(l, 0);
 
-  int ref;
-  obj *cur;
-  char dir, *arr;
-  
-  do
-    {
-      cur = dequeue(l);
-      
-      ref = findBlank(cur->pattern);
-
-      for( int i=0; i<4; rotateDir(&dir), i++ )
-	{
-	  arr = newComb(cur->pattern, ref, dir);
-
-	  if ( arr!=NULL && !search(memory, arr) )
-	    {
-	      memory[size] = arr;
-	      size++;
-
-	      enqueue(l, newObject(arr, cur));
-	    }
-
-	  else if ( arr!=NULL )
-	    free(arr);
-	}
-      
-    } while ( !equalArray(cur->pattern, goal->pattern) && !isEmpty(l) );
-
-  return cur;
-}
-
-/*-----------------------------DFS---------------------------------*/
-obj *dfs()
-{
-  readInput();
-  printObject(start); printObject(goal);
-
-  char **memory = initiateMemory();
-  
-  list *l = newList();
-  push(l, start);
-
-  
-  int ref;
-  obj *cur;
-  char dir, *arr;
+  int blank, ind;
+  char dir, *pattern;
 
   do
     {
-      cur = pop(l);
+      ind = dequeue(l);
 
-      ref = findBlank(cur->pattern);
-    
-      for( int i=0; i<4; rotateDir(&dir), i++ )
-	{
-	  arr = newComb(cur->pattern, ref, dir);
-	  
-  	  if ( arr!=NULL && !search(memory, arr) )
-	    {
-	      memory[size] = arr;
-	      size++;
-
-	      push(l, newObject(arr, cur));
-	    }
-	  
-	  else if ( arr!=NULL )
-	    free(arr);
-	}
-    } while ( !equalArray(cur->pattern, goal->pattern) && !isEmpty(l) );
-
-  return cur;     
-}
-
-/*---------------------------Best First----------------------------*/
-obj *bestFirst()
-{
-  readInput();
-  printObject(start); printObject(goal);
-  
-  obj *memory = initiateMemory1();
-  
-  heap *h = newHeap();
-  insertInHeap(h, 0, dif(start->pattern, goal->pattern));
-  
-  int ref, index;
-  char dir, *arr;
-
-  do
-    {
-      index = extractFromHeap(h);
-
-      ref = findBlank(memory[index].pattern);
+      blank = findBlank(memory[ind].pattern);
 
       for( int i=0; i<4; rotateDir(&dir), i++ )
 	{
-	  arr = newComb(memory[index].pattern, ref, dir);
+	  pattern = newComb(memory[ind].pattern, blank, dir);
 
-	  if ( arr!=NULL && !search1(memory, arr) )
+	  if ( pattern!=NULL && !searchHash(t, atoi(pattern)) )
 	    {
-	      memory[size].pattern = arr;
-	      memory[size].father = &memory[index];
+	      memory[memIndex].pattern = pattern;
+	      memory[memIndex].father = &memory[ind];
 	      
-	      insertInHeap(h, size, dif(arr, goal->pattern));
+	      if ( equalPattern(pattern, goal) )
+		return &memory[memIndex];
 
-	      size++;
+	      else
+		{
+		  insertHash(t, atoi(pattern));
+		  enqueue(l, memIndex);
+		  memIndex++;
+		}
 	    }
-	  
-	  else if ( arr!=NULL )
-	    free(arr);
+
+	  else
+	    free(pattern);
 	}
       
-    }while( !equalArray(goal->pattern, memory[index].pattern) && !heapIsEmpty(h) );
+    } while ( !equalPattern(memory[ind].pattern, goal) && !isEmpty(l) );
 
-  return &memory[index];  
+  free(l);
+  
+  return &memory[ind];
 }
+
+/*-----------------------------DFS---------------------------------*/
+mem *dfs(mem *memory, hash *t)
+{
+  list *l = newList();
+  push(l, 0);
+
+  int blank, ind;
+  char dir, *pattern;
+
+  do
+    {
+      ind = pop(l);
+
+      blank = findBlank(memory[ind].pattern);
+
+      for( int i=0; i<4; rotateDir(&dir), i++ )
+	{
+	  pattern = newComb(memory[ind].pattern, blank, dir);
+
+	  if ( pattern!=NULL && !searchHash(t, atoi(pattern)) )
+	    {
+	      memory[memIndex].pattern = pattern;
+	      memory[memIndex].father = &memory[ind];
+	      
+	      if ( equalPattern(pattern, goal) )
+		return &memory[memIndex];
+
+	      else
+		{
+		  insertHash(t, atoi(pattern));
+		  push(l, memIndex);
+		  memIndex++;
+		}
+	    }
+
+	  else
+	    free(pattern);
+	}
+      
+    } while ( !equalPattern(memory[ind].pattern, goal) && !isEmpty(l) );
+
+  free(l);
+  
+  return &memory[ind];
+}
+
+/*--------------------------BestFirst------------------------------*/
+mem *bestFirst(mem *memory, hash *t)
+{
+  heap *h = newHeap();
+  insertInHeap(h, 0, dif(start, goal));
+
+  int blank, ind;
+  char dir, *pattern;
+
+  do
+    {
+      ind = extractFromHeap(h);
+
+      blank = findBlank(memory[ind].pattern);
+
+      for( int i=0; i<4; rotateDir(&dir), i++ )
+	{
+	  pattern = newComb(memory[ind].pattern, blank, dir);
+
+	  if ( pattern!=NULL && !searchHash(t, atoi(pattern)) )
+	    {
+	      memory[memIndex].pattern = pattern;
+	      memory[memIndex].father = &memory[ind];
+	      
+	      if ( equalPattern(pattern, goal) )
+		return &memory[memIndex];
+
+	      else
+		{
+		  insertHash(t, atoi(pattern));
+		  insertInHeap(h, memIndex, dif(pattern, goal));
+		  memIndex++;
+		}	      
+	    }
+	  else
+	    free(pattern);
+	}
+    }while ( !equalPattern(memory[ind].pattern, goal) && !heapIsEmpty(h) );
+
+  return &memory[ind];
+}
+
 
 int dif(char *arr, char *vec)
 {
@@ -381,47 +375,66 @@ int dif(char *arr, char *vec)
 
   return n;
 }
-
-/*----------------------------aStar-------------------------------*/
-obj *aStar()
+  
+/*-----------------------------A*------------------------------*/
+mem *aStar(mem *memory, hash *t)
 {
-  readInput();
-  printObject(start); printObject(goal);
-  
-  obj *memory = initiateMemory1();
-  
   heap *h = newHeap();
-  insertInHeap(h, 0, dif(start->pattern, goal->pattern));
-  
-  int ref, index;
-  char dir, *arr;
+  insertInHeap(h, 0, dif(start, goal));
+
+  int blank, ind;
+  char dir, *pattern;
 
   do
     {
-      index = extractFromHeap(h);
+      ind = extractFromHeap(h);
 
-      ref = findBlank(memory[index].pattern);
+      blank = findBlank(memory[ind].pattern);
 
       for( int i=0; i<4; rotateDir(&dir), i++ )
 	{
-	  arr = newComb(memory[index].pattern, ref, dir);
+	  pattern = newComb(memory[ind].pattern, blank, dir);
 
-	  if ( arr!=NULL && !search1(memory, arr) )
+	  if ( pattern!=NULL && !searchHash(t, atoi(pattern)) )
 	    {
-	      memory[size].pattern = arr;
-	      memory[size].father = &memory[index];
-	      memory[size].g = memory[index].g + 1;
+	      memory[memIndex].pattern = pattern;
+	      memory[memIndex].father = &memory[ind];
+	      memory[memIndex].g = memory[ind].g + 1;
 	      
-	      insertInHeap(h, size, dif(arr, goal->pattern) + memory[size].g);
+	      if ( equalPattern(pattern, goal) )
+		return &memory[memIndex];
 
-	      size++;
+	      else
+		{
+		  insertHash(t, atoi(pattern));
+		  insertInHeap(h, memIndex, dif(pattern, goal) + memory[memIndex].g);
+		  memIndex++;
+		}	      
 	    }
-	  
-	  else if ( arr!=NULL )
-	    free(arr);
+	  else
+	    free(pattern);
 	}
-      
-    }while( !equalArray(goal->pattern, memory[index].pattern) && !heapIsEmpty(h) );
+    }while ( !equalPattern(memory[ind].pattern, goal) && !heapIsEmpty(h) );
 
-  return &memory[index];  
+  return &memory[ind];
+}
+
+
+/*--------------------------Find/Equal-----------------------------*/
+int findBlank(char *arr)
+{
+  int i;
+  
+  for( i=0; i<9 && arr[i]!='0'; i++ );
+
+  return i;
+}
+
+int equalPattern(char *p1, char *p2)
+{
+  for( int i=0; i<9; i++ )
+    if ( p1[i] != p2[i] )
+      return 0;
+
+  return 1;
 }

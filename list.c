@@ -1,4 +1,6 @@
 #include "list.h"
+#define INVALID 2147483648
+
 
 list *newList()
 {
@@ -9,8 +11,8 @@ list *newList()
 
   l->size = 0;
   
-  l->first = newNode(NULL);
-  l->last = newNode(NULL);
+  l->first = newNode(INVALID);
+  l->last = newNode(INVALID);
   
   l->first->next = l->last;
   l->first->prev = NULL;
@@ -21,7 +23,7 @@ list *newList()
   return l;
 }
 
-lnode *newNode(obj *a)
+lnode *newNode(int a)
 {
   lnode *n = (lnode*)malloc(sizeof(lnode));
 
@@ -31,12 +33,12 @@ lnode *newNode(obj *a)
   n->prev = NULL;
   n->next = NULL;
 
-  n->objeto =  a;
+  n->value =  a;
 
   return n;
 }
 
-void insertFirst(list *l, obj *n)
+void insertFirst(list *l, int n)
 {
   lnode *temp = newNode(n);
   
@@ -49,10 +51,10 @@ void insertFirst(list *l, obj *n)
   l->size++;
 }
 
-void push(list *l, obj *n) { insertFirst(l, n); }
+void push(list *l, int n) { insertFirst(l, n); }
 
 
-void insertLast(list *l, obj *n)
+void insertLast(list *l, int n)
 {
   lnode *temp = newNode(n);
   
@@ -65,13 +67,13 @@ void insertLast(list *l, obj *n)
   l->size++;
 }
 
-void enqueue(list *l, obj *n) { insertLast(l, n); }
+void enqueue(list *l, int n) { insertLast(l, n); }
 
 
-obj *removeFirst(list *l)
+int removeFirst(list *l)
 {
   if ( !l->size )
-    return NULL;
+    return INVALID;
 
   lnode *temp = l->first->next;
 
@@ -83,18 +85,18 @@ obj *removeFirst(list *l)
 
   l->size--;
 
-  return temp->objeto;
+  return temp->value;
 }
 
-obj *pop(list *l) { return removeFirst(l); }
+int pop(list *l) { return removeFirst(l); }
 
-obj *dequeue(list *l) { return removeFirst(l); }
+int dequeue(list *l) { return removeFirst(l); }
 
 
-obj *removeLast(list *l)
+int removeLast(list *l)
 {
   if ( !l->size )
-    return NULL;
+    return INVALID;
 
   lnode *temp = l->last->prev;
 
@@ -106,7 +108,22 @@ obj *removeLast(list *l)
 
   l->size--;
 
-  return temp->objeto;
+  return temp->value;
+}
+
+void removeValue(list *l, int v)
+{
+  lnode *cur;
+  
+  for( cur = l->first->next; cur!=l->last && cur->value!=v; cur = cur->next );
+
+  if ( cur==l->last )
+    return;
+
+  cur->next->prev = cur->prev;
+  cur->prev->next = cur->next;
+
+  l->size--;
 }
 
 int listSize(list *l)
@@ -120,23 +137,32 @@ int listSize(list *l)
 int isEmpty(list *l ) { return l->size ? 0: 1; }
 
 
-obj *getFirst(list *l)
+int getFirst(list *l)
 {
   if ( isEmpty(l) )
-    return NULL;
+    return INVALID;
 
-  return l->first->next->objeto;
+  return l->first->next->value;
 }
 
-obj *top(list *l) { return getFirst(l); }
+int top(list *l) { return getFirst(l); }
 
 
-obj *getLast(list *l)
+int getLast(list *l)
 {
   if ( isEmpty(l) )
-    return NULL;
+    return INVALID;
 
-  return l->last->prev->objeto;
+  return l->last->prev->value;
+}
+
+int searchList(list *l, int v)
+{
+  for( lnode *cur = l->first->next; cur!=l->last; cur = cur->next )
+    if ( cur->value == v )
+      return 1;
+
+  return 0;
 }
 
 void printList(list *l)
@@ -155,19 +181,7 @@ void printList(list *l)
       for( lnode *cur = l->first->next; cur!=l->last; cur = cur->next )
 	{
 	  printf("Index = %d\n", i++);
-	  printObject(cur->objeto);
+	  printf("Value = %d\n", cur->value);
 	}
     }
-}
-
-void errorMessageIllegalSize(char *str)
-{
-  fprintf(stderr, "List size is Lower than 0, error on %s", str);
-  exit(EXIT_FAILURE);
-}
-
-void errorMessageListSize(char *str)
-{
-  fprintf(stderr, "List size does not match its contents, error on %s", str);
-  exit(EXIT_FAILURE);
 }

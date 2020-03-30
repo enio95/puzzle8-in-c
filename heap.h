@@ -1,5 +1,10 @@
 #ifndef HEAP
 #define HEAP
+
+#ifndef ERROR
+#include "errorMessage.c"
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -63,8 +68,6 @@ void auxPrint(heap *, int, int);
 
 /*-------------------------Non related func-------------------------*/
 int power(int b, int exp);
-//void errorMessageMem(char *str);
-void errorMessageIndex(char *str);
 
 
 #endif

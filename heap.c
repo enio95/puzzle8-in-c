@@ -1,5 +1,4 @@
 #include "heap.h"
-#include "objeto.h"
 
 /*----------------------------------------------------------------
   --------------------------Made by Énio--------------------------
@@ -214,10 +213,4 @@ int power(int b, int exp)
   
   else
     return b*power(b*b, exp/2);
-}
-
-void errorMessageIndex(char *str)
-{
-  fprintf(stderr, "you are suposed to insert the INDEX of your object. Failed on %s\n", str);
-  exit(EXIT_FAILURE);    
 }
